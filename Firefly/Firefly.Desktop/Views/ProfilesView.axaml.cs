@@ -75,6 +75,13 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
             this.BindCommand(ViewModel, vm => vm.DeleteSubCmd, v => v.menuSubDelete).DisposeWith(disposables);
 
             //servers delete
+            this.BindCommand(ViewModel, vm => vm.ToggleFavoriteCmd, v => v.menuToggleFavorite).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.EditFavoriteAliasCmd, v => v.menuEditFavoriteAlias).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ReviewFavoriteCmd, v => v.menuReviewFavorite).DisposeWith(disposables);
+            ViewModel.EditFavoriteAliasInteraction.RegisterHandler(async interaction =>
+                interaction.SetOutput(await FavoriteDialogs.EditAliasAsync(interaction.Input))).DisposeWith(disposables);
+            ViewModel.ReviewFavoriteInteraction.RegisterHandler(async interaction =>
+                interaction.SetOutput(await FavoriteDialogs.ReviewAsync(interaction.Input))).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.EditServerCmd, v => v.menuEditServer).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RemoveServerCmd, v => v.menuRemoveServer).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RemoveDuplicateServerCmd, v => v.menuRemoveDuplicateServer).DisposeWith(disposables);
@@ -199,6 +206,16 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
 
     #region Event
 
+    private static bool IsFavoriteButton(object? source) => source is Visual visual &&
+        (visual is Button || visual.FindAncestorOfType<Button>() is not null);
+
+    private async void FavoriteStar_Click(object? sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { DataContext: ProfileItemModel row } && ViewModel is not null)
+            await ViewModel.ToggleFavoriteAsync(row);
+    }
+
     public async Task ShareServer(string url)
     {
         if (url.IsNullOrEmpty())
@@ -228,6 +245,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
 
     private void LstProfiles_DoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
+        if (IsFavoriteButton(e.Source)) { e.Handled = true; return; }
         var source = e.Source as Border;
         if (source?.Name == "HeaderBackground")
         {
@@ -268,6 +286,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
 
     private void LstProfiles_KeyDown(object? sender, KeyEventArgs e)
     {
+        if (IsFavoriteButton(e.Source)) return;
         if (e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta)
         {
             switch (e.Key)
@@ -558,6 +577,7 @@ public partial class ProfilesView : ReactiveUserControl<ProfilesViewModel>
     {
         try
         {
+            if (IsFavoriteButton(e.Source)) return;
             if (e.Source is not Visual visualSource)
             {
                 return;

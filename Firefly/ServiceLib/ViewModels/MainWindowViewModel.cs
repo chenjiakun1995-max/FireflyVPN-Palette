@@ -689,17 +689,20 @@ public partial class MainWindowViewModel : MyReactiveObject
                 : new[] { await AppManager.Instance.GetProfileItem(original.IndexId) }
                     .OfType<ProfileItem>()
                     .ToList();
-            var matched = ConnectionRecoveryService.FindNodeByEndpoint(candidates, original);
+            var activeFavorite = await FavoriteService.Instance.IsApprovedFavoriteAsync(original, subItem);
+            var matched = !activeFavorite ? ConnectionRecoveryService.FindNodeByEndpoint(candidates, original)
+                : candidates?.FirstOrDefault(p => FavoriteFingerprint.SameConnection(p, original));
             if (matched is null)
             {
                 // Subscription refreshes replace rows in the local database.
                 // Restore the prior row as a safe fallback, keep the old runtime
                 // core untouched, and avoid silently switching to another node.
-                await SQLiteHelper.Instance.ReplaceAsync(original);
+                if (!activeFavorite) await SQLiteHelper.Instance.ReplaceAsync(original);
                 await ConfigHandler.SetDefaultServerIndex(_config, original.IndexId);
                 await RefreshServersDispatcherAsync();
                 NoticeManager.Instance.SendMessageAndEnqueue(
-                    "未找到地址和端口相同的节点，已保持当前连接。");
+                    !activeFavorite ? "未找到地址和端口相同的节点，已保持当前连接。"
+                        : "收藏节点配置已变化或消失，已保持当前连接，请在收藏中查看。");
                 return;
             }
 

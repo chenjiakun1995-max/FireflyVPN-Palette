@@ -106,6 +106,7 @@ public partial class ProfilesViewModel : MyReactiveObject
     public ProfilesViewModel()
     {
         _config = AppManager.Instance.Config;
+        InitializeFavorites();
 
         #region WhenAnyValue && ReactiveCommand
 
@@ -394,9 +395,11 @@ public partial class ProfilesViewModel : MyReactiveObject
 
     public async Task RefreshServersBiz()
     {
+        var selectedFavoriteId = SelectedProfile?.FavoriteId;
         var selectedSubId = SelectedSub?.Id ?? _config.SubIndexId;
         var lstModel = await GetProfileItemsEx(selectedSubId, _serverFilter);
-        _lstProfile = JsonUtils.Deserialize<List<ProfileItem>>(JsonUtils.Serialize(lstModel)) ?? [];
+        _lstProfile = JsonUtils.Deserialize<List<ProfileItem>>(JsonUtils.Serialize(
+            lstModel?.Where(p => p.IndexId.IsNotEmpty()))) ?? [];
 
         ProfileItems.Clear();
         ProfileItems.AddRange(lstModel ?? []);
@@ -408,9 +411,11 @@ public partial class ProfilesViewModel : MyReactiveObject
                 selected = lstModel.FirstOrDefault(t => t.IndexId == _pendingSelectIndexId);
                 _pendingSelectIndexId = null;
             }
+            if (selectedFavoriteId.IsNotEmpty()) selected ??= lstModel.FirstOrDefault(t => t.FavoriteId == selectedFavoriteId);
             selected ??= lstModel.FirstOrDefault(t => t.IndexId == _config.IndexId);
             SelectedProfile = selected ?? lstModel.First();
         }
+        else SelectedProfile = new();
 
         try
         {
@@ -466,10 +471,10 @@ public partial class ProfilesViewModel : MyReactiveObject
     {
         // Use the group represented by the current UI refresh, rather than a
         // concurrently changing persisted selection.
-        var lstModel = await AppManager.Instance.ProfileModels(subid, filter);
+        var lstModel = await AppManager.Instance.ProfileModels(subid, string.Empty);
         var managedSubscriptionIds = await FireflyManagedSubscriptionPolicy.GetManagedSubscriptionIdsAsync();
 
-        await ConfigHandler.SetDefaultServer(_config, lstModel);
+        // A view refresh (including the favorites filter) must not select a connection.
 
         var lstServerStat = (_config.GuiItem.EnableStatistics ? StatisticsManager.Instance.ServerStat : null) ?? [];
         var lstProfileExs = await ProfileExManager.Instance.GetProfileExs();
@@ -508,7 +513,7 @@ public partial class ProfilesViewModel : MyReactiveObject
             FireflyManagedSubscriptionPolicy.MaskProfileForDisplay(profile, managedSubscriptionIds);
         }
 
-        return lstModel;
+        return await ApplyFavoritesAsync(lstModel, subid, filter);
     }
 
     #endregion Servers && Groups

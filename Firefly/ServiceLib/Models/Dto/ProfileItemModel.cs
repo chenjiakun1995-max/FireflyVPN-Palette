@@ -16,6 +16,20 @@ public partial class ProfileItemModel : ReactiveObject
     public string SubRemarks { get; set; }
     public int Sort { get; set; }
 
+    public string FavoriteId { get; set; } = string.Empty;
+    public string FavoriteAlias { get; set; } = string.Empty;
+    public string FavoriteStatus { get; set; } = string.Empty;
+    public bool IsFavorite => FavoriteId.IsNotEmpty();
+    public bool CanFavorite => IsFavorite || (IndexId.IsNotEmpty() && !ConfigType.IsComplexType()
+        && ConfigType != EConfigType.Outbound);
+    public bool HasFavoriteAlias => FavoriteAlias.IsNotEmpty();
+    public string FavoriteStar => IsFavorite ? "★" : "☆";
+    public string FavoriteAction => IsFavorite ? "取消收藏" : "收藏节点";
+    public string DisplayName => HasFavoriteAlias ? FavoriteAlias : Remarks;
+    public string OriginalNameSuffix => HasFavoriteAlias ? Remarks : string.Empty;
+    public string FavoriteTooltip => string.Join("\n", new[] { DisplayName,
+        HasFavoriteAlias ? Remarks : string.Empty, FavoriteStatus }.Where(s => s.IsNotEmpty()));
+
     [Reactive]
     public partial int Delay { get; set; }
 

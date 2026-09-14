@@ -76,6 +76,9 @@
                     AutomationProperties.Name="{x:Static resx:ResUI.MsgServerTitle}"
                     Style="{StaticResource DefTextBox}" />
 
+                <ToggleButton x:Name="btnFavoritesOnly" Content="★ 收藏" Margin="4,0"
+                    IsChecked="{Binding FavoritesOnly, Mode=TwoWay}" ToolTip="只显示收藏的节点" />
+
                 <Button
                     x:Name="btnAutofitColumnWidth"
                     Width="30"
@@ -129,6 +132,10 @@
                 </DataGrid.InputBindings>
                 <DataGrid.ContextMenu>
                     <ContextMenu Style="{StaticResource DefContextMenu}">
+                        <MenuItem x:Name="menuToggleFavorite" Header="收藏 / 取消收藏" />
+                        <MenuItem x:Name="menuEditFavoriteAlias" Header="编辑收藏备注" />
+                        <MenuItem x:Name="menuReviewFavorite" Header="查看并关联新配置…" />
+                        <Separator />
                         <MenuItem
                             x:Name="menuSetDefaultServer"
                             Height="{StaticResource MenuItemHeight}"
@@ -293,11 +300,37 @@
                         Binding="{Binding ConfigType}"
                         ExName="ConfigType"
                         Header="{x:Static resx:ResUI.LvServiceType}" />
-                    <base:MyDGTextColumn
-                        Width="150"
-                        Binding="{Binding Remarks}"
-                        ExName="Remarks"
-                        Header="{x:Static resx:ResUI.LvRemarks}" />
+                    <base:MyDGTemplateColumn Width="*" MinWidth="180" ExName="Remarks" SortMemberPath="DisplayName"
+                        Header="{x:Static resx:ResUI.LvRemarks}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="4,0" ToolTip="{Binding FavoriteTooltip}">
+                                    <Button DockPanel.Dock="Left" Width="26" Height="22" MinHeight="0" Padding="0"
+                                        Background="Transparent" BorderThickness="0" Foreground="#B78314"
+                                        Content="{Binding FavoriteStar}" IsEnabled="{Binding CanFavorite}"
+                                        ToolTip="{Binding FavoriteAction}" Click="FavoriteStar_Click" />
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding FavoriteStatus}" FontSize="11"
+                                        Foreground="#B78314" MaxWidth="135" Margin="6,0,0,0"
+                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding FavoriteAlias}" MaxWidth="160"
+                                        Visibility="{Binding HasFavoriteAlias, Converter={StaticResource BoolToVisConverter}}"
+                                        Margin="0,0,6,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock VerticalAlignment="Center" Text="{Binding Remarks}" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasFavoriteAlias}" Value="True">
+                                                        <Setter Property="FontSize" Value="11" />
+                                                        <Setter Property="Opacity" Value="0.6" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DockPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </base:MyDGTemplateColumn>
                     <base:MyDGTextColumn
                         Width="120"
                         Binding="{Binding Address}"

@@ -430,6 +430,10 @@ public static class ConfigHandler
 
         config.IndexId = indexId;
 
+        var activeProfile = await AppManager.Instance.GetProfileItem(indexId!);
+        await FavoriteService.Instance.TrackActiveAsync(indexId!, activeProfile,
+            activeProfile is null ? null : await AppManager.Instance.GetSubItem(activeProfile.Subid));
+
         await SaveConfig(config);
 
         return 0;
@@ -444,6 +448,10 @@ public static class ConfigHandler
     /// <returns>Result of SetDefaultServerIndex operation</returns>
     public static async Task<int> SetDefaultServer(Config config, List<ProfileItemModel> lstProfile)
     {
+        if (await FavoriteService.Instance.GetRetainedProfileAsync(config.IndexId) is not null)
+        {
+            return 0;
+        }
         if (lstProfile.Exists(t => t.IndexId == config.IndexId))
         {
             return 0;
@@ -512,6 +520,11 @@ public static class ConfigHandler
         IEnumerable<string>? preferredSubscriptionIds = null)
     {
         var current = await AppManager.Instance.GetProfileItem(config.IndexId);
+        var retained = await FavoriteService.Instance.GetRetainedProfileAsync(config.IndexId);
+        if (retained is not null && (current is null || !FavoriteFingerprint.SameConnection(current, retained)))
+        {
+            return retained;
+        }
         if (current?.IsValid() == true)
         {
             return current;
@@ -2137,6 +2150,45 @@ public static class ConfigHandler
     /// <returns>Number of successfully imported servers or -1 if failed</returns>
     public static async Task<int> AddBatchServers(Config config, string strData, string subid, bool isSub)
     {
+        if (!isSub || subid.IsNullOrEmpty() || strData.IsNullOrEmpty())
+        {
+            return await AddBatchServersCore(config, strData, subid, isSub);
+        }
+        // Imports replace rows. Keep the previous snapshot on a failed/empty import,
+        // rather than making bookmarks appear removed after a network/format error.
+        var previous = (await AppManager.Instance.ProfileItems(subid) ?? []).Where(p => p.IsSub).ToList();
+        var previousFiles = new Dictionary<string, byte[]>();
+        foreach (var profile in previous.Where(p => p.ConfigType is EConfigType.Custom or EConfigType.Outbound))
+        {
+            var path = Utils.GetConfigPath(profile.Address);
+            if (File.Exists(path)) previousFiles[path] = await File.ReadAllBytesAsync(path);
+        }
+        var previousIndex = config.IndexId;
+        try
+        {
+            var count = await AddBatchServersCore(config, strData, subid, isSub);
+            if (count > 0) return count;
+        }
+        catch
+        {
+            await RestorePreviousAsync();
+            throw;
+        }
+        await RestorePreviousAsync();
+        return -1;
+
+        async Task RestorePreviousAsync()
+        {
+            await RemoveServersViaSubid(config, subid, true);
+            await SQLiteHelper.Instance.InsertAllAsync(previous);
+            foreach (var file in previousFiles) await File.WriteAllBytesAsync(file.Key, file.Value);
+            if (previous.Any(p => p.IndexId == previousIndex))
+                await SetDefaultServerIndex(config, previousIndex);
+        }
+    }
+
+    private static async Task<int> AddBatchServersCore(Config config, string strData, string subid, bool isSub)
+    {
         if (strData.IsNullOrEmpty())
         {
             return -1;
@@ -2147,6 +2199,8 @@ public static class ConfigHandler
         {
             lstOriSub = await AppManager.Instance.ProfileItems(subid);
             activeProfile = lstOriSub?.FirstOrDefault(t => t.IndexId == config.IndexId);
+            activeProfile ??= await FavoriteService.Instance.GetRetainedProfileAsync(config.IndexId);
+            if (activeProfile?.Subid != subid) activeProfile = null;
             await RemoveServersViaSubid(config, subid, true);
         }
 
@@ -2211,7 +2265,9 @@ public static class ConfigHandler
         if (activeProfile != null)
         {
             var lstSub = await AppManager.Instance.ProfileItems(subid);
-            var existItem = FindMatchedProfileItem(lstSub, activeProfile);
+            var activeFavorite = await FavoriteService.Instance.IsApprovedFavoriteAsync(activeProfile, await AppManager.Instance.GetSubItem(subid));
+            var existItem = !activeFavorite ? FindMatchedProfileItem(lstSub, activeProfile)
+                : lstSub?.FirstOrDefault(p => FavoriteFingerprint.SameConnection(p, activeProfile));
             if (existItem != null)
             {
                 await ConfigHandler.SetDefaultServerIndex(config, existItem.IndexId);
@@ -2349,7 +2405,8 @@ public static class ConfigHandler
         {
             return -1;
         }
-        var profiles = await SQLiteHelper.Instance.TableAsync<ProfileItem>().Where(t => t.Subid == subid).ToListAsync();
+        var profiles = await SQLiteHelper.Instance.TableAsync<ProfileItem>()
+            .Where(t => t.Subid == subid && (!isSub || t.IsSub)).ToListAsync();
         var customProfile = (await FireflyManagedProfileStorage.HydrateAsync(profiles))
             .Where(t => t.ConfigType == EConfigType.Custom || t.ConfigType == EConfigType.Outbound)
             .ToList();

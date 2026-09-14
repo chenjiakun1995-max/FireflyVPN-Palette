@@ -47,6 +47,13 @@ public partial class ProfilesView
             this.BindCommand(ViewModel, vm => vm.EditSubCmd, v => v.btnEditSub).DisposeWith(disposables);
 
             //servers delete
+            this.BindCommand(ViewModel, vm => vm.ToggleFavoriteCmd, v => v.menuToggleFavorite).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.EditFavoriteAliasCmd, v => v.menuEditFavoriteAlias).DisposeWith(disposables);
+            this.BindCommand(ViewModel, vm => vm.ReviewFavoriteCmd, v => v.menuReviewFavorite).DisposeWith(disposables);
+            ViewModel.EditFavoriteAliasInteraction.RegisterHandler(interaction =>
+                interaction.SetOutput(FavoriteDialogs.EditAlias(interaction.Input))).DisposeWith(disposables);
+            ViewModel.ReviewFavoriteInteraction.RegisterHandler(interaction =>
+                interaction.SetOutput(FavoriteDialogs.Review(interaction.Input))).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.EditServerCmd, v => v.menuEditServer).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RemoveServerCmd, v => v.menuRemoveServer).DisposeWith(disposables);
             this.BindCommand(ViewModel, vm => vm.RemoveDuplicateServerCmd, v => v.menuRemoveDuplicateServer).DisposeWith(disposables);
@@ -156,6 +163,30 @@ public partial class ProfilesView
 
     #region Event
 
+    private static bool IsFavoriteButton(object? source)
+    {
+        for (var item = source as DependencyObject; item is not null;)
+        {
+            if (item is ButtonBase) return true;
+            item = item is Visual ? VisualTreeHelper.GetParent(item) : (item as FrameworkContentElement)?.Parent;
+        }
+        return false;
+    }
+
+    private async void FavoriteStar_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { DataContext: ProfileItemModel row } && ViewModel is not null)
+            await ViewModel.ToggleFavoriteAsync(row);
+    }
+
+    private static string ColumnName(DataGridColumn column) => column switch
+    {
+        MyDGTextColumn text => text.ExName,
+        MyDGTemplateColumn template => template.ExName,
+        _ => string.Empty
+    };
+
     public async Task ShareServer(string url)
     {
         var img = QRCodeWindowsUtils.GetQRCode(url);
@@ -191,6 +222,7 @@ public partial class ProfilesView
 
     private void LstProfiles_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
+        if (IsFavoriteButton(e.OriginalSource)) { e.Handled = true; return; }
         if (_config.UiItem.DoubleClick2Activate)
         {
             ViewModel?.SetDefaultServer();
@@ -208,7 +240,7 @@ public partial class ProfilesView
             return;
         }
 
-        var colName = ((MyDGTextColumn)colHeader.Column).ExName;
+        var colName = ColumnName(colHeader.Column);
         ViewModel?.SortServer(colName);
     }
 
@@ -219,6 +251,7 @@ public partial class ProfilesView
 
     private void LstProfiles_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (IsFavoriteButton(e.OriginalSource)) return;
         if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
         {
             switch (e.Key)
@@ -333,9 +366,9 @@ public partial class ProfilesView
             var displayIndex = 0;
             foreach (var item in lvColumnItem)
             {
-                foreach (var item2 in lstProfiles.Columns.Cast<MyDGTextColumn>())
+                foreach (var item2 in lstProfiles.Columns)
                 {
-                    if (item2.ExName == item.Name)
+                    if (ColumnName(item2) == item.Name)
                     {
                         if (item.Width < 0)
                         {
@@ -369,11 +402,11 @@ public partial class ProfilesView
         try
         {
             List<ColumnItem> lvColumnItem = [];
-            foreach (var item2 in lstProfiles.Columns.Cast<MyDGTextColumn>())
+            foreach (var item2 in lstProfiles.Columns)
             {
                 lvColumnItem.Add(new()
                 {
-                    Name = item2.ExName,
+                    Name = ColumnName(item2),
                     Width = (int)(item2.Visibility == Visibility.Visible ? item2.ActualWidth : -1),
                     Index = item2.DisplayIndex
                 });

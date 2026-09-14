@@ -125,7 +125,7 @@ public static class FireflyManagedProfileStorage
         return stored;
     }
 
-    private static string Encrypt(string plainText)
+    internal static string Encrypt(string plainText)
     {
         var input = Encoding.UTF8.GetBytes(plainText);
         if (Utils.IsWindows())
@@ -146,7 +146,7 @@ public static class FireflyManagedProfileStorage
         throw new PlatformNotSupportedException("Managed profile encryption is supported on Windows and macOS only.");
     }
 
-    private static string Decrypt(string ciphertext)
+    internal static string Decrypt(string ciphertext)
     {
         if (ciphertext.StartsWith("dpapi:", StringComparison.Ordinal) && Utils.IsWindows())
         {

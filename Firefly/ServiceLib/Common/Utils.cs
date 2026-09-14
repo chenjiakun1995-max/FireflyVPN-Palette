@@ -10,7 +10,11 @@ public class Utils
     private static readonly string _tag = "Utils";
     private const string _fireflyInstallerRegistryPath = @"Software\FireflyVPN\Desktop";
     private const string _fireflyInstallerRegistryValue = "InstallLocation";
+#if PALETTE_BUILD
+    private const string _fireflyLocalAppDataDirectory = "FireflyVPN-Palette";
+#else
     private const string _fireflyLocalAppDataDirectory = "fireflyVPN";
+#endif
     private const string _legacyLocalAppDataDirectory = "v2rayN";
     private static int _localAppDataMigrationAttempted;
 
@@ -1111,7 +1115,9 @@ public class Utils
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var fireflyPath = Path.Combine(localAppData, _fireflyLocalAppDataDirectory);
+#if !PALETTE_BUILD
             MigrateLegacyLocalAppData(localAppData, fireflyPath);
+#endif
             return fireflyPath;
         }
 

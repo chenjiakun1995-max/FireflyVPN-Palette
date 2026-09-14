@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <Version>2.0.0</Version>
+        <DefineConstants Condition="'$(PaletteBuild)' == 'true'">$(DefineConstants);PALETTE_BUILD</DefineConstants>
         <!--
           Release automation supplies this from the FIREFLY_CLIENT_API_URL environment
           variable.  Keep the public-source default empty so local/source builds do

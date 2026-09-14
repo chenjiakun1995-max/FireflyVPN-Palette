@@ -38,7 +38,11 @@ internal class Program
         }
         else
         {
+#if PALETTE_BUILD
+            _ = new Mutex(true, "FireflyVPN-Palette", out var bOnlyOneInstance);
+#else
             _ = new Mutex(true, "Firefly", out var bOnlyOneInstance);
+#endif
             if (!bOnlyOneInstance)
             {
                 return false;

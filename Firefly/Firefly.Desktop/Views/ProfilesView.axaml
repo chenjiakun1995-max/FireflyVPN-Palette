@@ -82,6 +82,9 @@
                         VerticalContentAlignment="Center"
                         PlaceholderText="{x:Static resx:ResUI.MsgServerTitle}" />
 
+                    <ToggleButton x:Name="btnFavoritesOnly" Content="★ 收藏" Margin="4,0"
+                        IsChecked="{Binding FavoritesOnly, Mode=TwoWay}" ToolTip.Tip="只显示收藏的节点" />
+
                     <Button
                         x:Name="btnAutofitColumnWidth"
                         Margin="{StaticResource MarginLr4}"
@@ -128,7 +131,7 @@
                 ItemsSource="{Binding ProfileItems}">
                 <DataGrid.KeyBindings>
                     <KeyBinding Command="{Binding Export2ShareUrlCmd}" Gesture="Ctrl+C" />
-                    <KeyBinding Command="{Binding SetDefaultServerCmd}" Gesture="Enter" />
+                    <!-- Enter is handled in code so a focused star cannot activate its row. -->
                 </DataGrid.KeyBindings>
                 <DataGrid.Styles>
                     <Style Selector="DataGridRow">
@@ -143,6 +146,10 @@
                 </DataGrid.Styles>
                 <DataGrid.ContextMenu>
                     <ContextMenu>
+                        <MenuItem x:Name="menuToggleFavorite" Header="收藏 / 取消收藏" />
+                        <MenuItem x:Name="menuEditFavoriteAlias" Header="编辑收藏备注" />
+                        <MenuItem x:Name="menuReviewFavorite" Header="查看并关联新配置…" />
+                        <Separator />
                         <MenuItem
                             x:Name="menuSetDefaultServer"
                             Header="{x:Static resx:ResUI.menuSetDefaultServer}"
@@ -238,24 +245,40 @@
                         Header="{x:Static resx:ResUI.LvServiceType}"
                         Tag="ConfigType" />
 
-                    <DataGridTemplateColumn SortMemberPath="Remarks" Tag="Remarks">
+                    <DataGridTemplateColumn Width="*" MinWidth="180" SortMemberPath="DisplayName" Tag="Remarks">
                         <DataGridTemplateColumn.Header>
                             <TextBlock Text="{x:Static resx:ResUI.LvRemarks}" />
                         </DataGridTemplateColumn.Header>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="{StaticResource MarginLr8}" Orientation="Horizontal">
+                                <DockPanel Margin="4,0" ToolTip.Tip="{Binding FavoriteTooltip}">
+                                    <Button DockPanel.Dock="Left" Width="26" Height="22" MinHeight="0" Padding="0"
+                                        Background="Transparent" BorderThickness="0" Foreground="#B78314"
+                                        Content="{Binding FavoriteStar}" IsEnabled="{Binding CanFavorite}"
+                                        ToolTip.Tip="{Binding FavoriteAction}" Click="FavoriteStar_Click" />
                                     <Label
+                                        DockPanel.Dock="Left"
                                         Margin="{StaticResource MarginLr4}"
                                         Classes="Solid Red"
                                         Content="{x:Static resx:ResUI.TipActiveServer}"
                                         IsVisible="{Binding IsActive}"
                                         Theme="{DynamicResource TagLabel}" />
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Text="{Binding Remarks}" />
-                                </StackPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding FavoriteStatus}" FontSize="11"
+                                        Foreground="#B78314" MaxWidth="135" Margin="6,0,0,0"
+                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding FavoriteAlias}" MaxWidth="160"
+                                        IsVisible="{Binding HasFavoriteAlias}" Margin="0,0,6,0"
+                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Classes.FavoriteOriginal="{Binding HasFavoriteAlias}"
+                                        VerticalAlignment="Center" Text="{Binding Remarks}" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Styles>
+                                            <Style Selector="TextBlock.FavoriteOriginal">
+                                                <Setter Property="FontSize" Value="11" />
+                                                <Setter Property="Opacity" Value="0.6" />
+                                            </Style>
+                                        </TextBlock.Styles>
+                                    </TextBlock>
+                                </DockPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

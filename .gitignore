@@ -91,6 +91,7 @@ guiNDB.db-*
 *.ps1
 !package-windows.ps1
 !scripts/download-cores-windows.ps1
+!scripts/build-palette.ps1
 
 # Keep README files; other Markdown files are local planning/change notes.
 *.md
