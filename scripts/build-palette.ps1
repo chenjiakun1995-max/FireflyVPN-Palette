@@ -49,7 +49,7 @@ Otherwise its settings are kept beside this executable.
 The app starts proxy services when launched. Close the other VPN when you are
 ready to switch, then launch FireflyVPN-Palette.exe yourself.
 
-Source: https://github.com/chenjiakun1995-max/FireflyVPN-Palette/tree/codex/favorites
+Source: https://github.com/chenjiakun1995-max/FireflyVPN-Palette/tree/palette
 Upstream: https://github.com/Iskongkongyo/FireflyVPN-Desktop
 License: GPL-3.0 (see LICENSE)
 '@ | Set-Content -LiteralPath (Join-Path $output 'README.txt') -Encoding utf8

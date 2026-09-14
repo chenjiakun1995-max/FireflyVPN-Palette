@@ -1,6 +1,8 @@
 # FireflyVPN-Palette 收藏版
 
-开发分支：`codex/favorites`。收藏逻辑位于共享的 ServiceLib，WPF 与 Avalonia 节点列表共用它。
+日常开发统一使用 `palette`，也是本仓库默认分支；后续功能直接在此分支迭代。
+`main` 保留为原项目基线，同步上游后将更新合并到 `palette`。
+收藏逻辑位于共享的 ServiceLib，WPF 与 Avalonia 节点列表共用它。
 
 ## 使用
 
